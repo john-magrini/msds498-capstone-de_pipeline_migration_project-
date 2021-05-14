@@ -12,3 +12,31 @@ Data will be stored in HDFS in parquet format. These data will be processed by S
 
 All the frameworks did employ various levels of DevOps behaviors such as using Python’s try/except functions and logging and monitoring. Data availability is critical for most ETL jobs as there is some reliance on upstream data sets. In order to reduce the lag of data freshness, a push system would be ideal where the next job automatically starts when the data becomes available. This is somewhat of a hybrid push pull system. A task or job is created as a dependancy and this job is tasked with checking the data availability of the upstream data sources. If the test passes and the data is available, then the Spark job continues on to the next stage or job. 
 
+After we know what journal entry to check for our data, we can create this job in PySpark and deploy it on our data pipelines platform. For example,
+
+First, it is important to describe what the job is, who the owner of it is, and when it runs.
+
+<pre>
+######################################################################## 
+# Owner: 
+# Frequency: 
+# Job Description: 
+# 
+########################################################################
+</pre>
+
+Then we import the relevant packages. There is no need for a separate requirements.txt file unless you have custom packages you need to install otherwise there is one main requirements.txt file for the entire platform. Each job essentially spins up a new virtual environment so installing packages is not cumbersome. 
+
+<pre>
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+from pyspark.sql.functions import *
+from datetime import datetime, timedelta
+import os
+from pyspark import SparkConf, SparkContext
+import pandas as pd
+import sys
+import pytz
+import dateutil.relativedelta
+</pre>
+
