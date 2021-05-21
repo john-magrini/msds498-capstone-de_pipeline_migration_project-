@@ -40,3 +40,62 @@ import pytz
 import dateutil.relativedelta
 </pre>
 
+Next we want to incorporate our logic and test case in a function. We want this to be a function so that the platform does not invoke the code until the function is called and this is also why we use:
+
+<pre>if __name__ == "__main__”:</pre>
+
+Our test case might look something like the below:
+
+<pre>
+def main(spark, in_dt):
+    df = spark.sql('''
+    select count(1) as num_records
+    from hms.journal
+    where check_dt cob = ‘{0}'
+    '''.format(in_dt))
+    if df.count() == 0:
+        raise RuntimeError("Logging Info *** Source data not available for {0}".format(in_dt))
+    else:
+        print("Logging Info *** Source data available for {0}".format(in_dt))
+        return True
+</pre>
+
+Let’s break this down a little bit further. We created a parameter, in_dt, so that when deployed in our pipeline (done via Docker) we can use that as a parameter and pass the latest date through. Also, note here that journal is an HMS or Hive Metastore table. We can review the underlying properties of the table by running something like:
+
+<pre>
+spark.sql('''
+    describe table extended hms.journal
+    '’’).show(300,False)
+</pre>
+
+This will also tell you the underlying directory and partition keys in HDFS.
+
+Another point of interest in the main function’s code is the logging statements.
+
+<pre>raise RuntimeError("Logging Info *** Source data not available for {0}".format(in_dt))</pre>
+
+These statements are designed in such a way because Splunk is the provider being used for logs so in order to query the logs easily and efficiently, I use a distinct pattern such as
+
+<pre>Logging Info ***</pre>
+
+Logging is extremely important and can help debug and troubleshoot more effectively as well as provide custom and accessible monitoring. The overall concept here is that we want this job to fail if the data is not ready and provide us with a message indicating this.
+
+How does simply raising a RuntimeError provide this type of notification? That would be because we use a .yml to configure the spark jobs and pipelines and can configure this file so that an email is sent upon failure.
+
+<pre>
+    - id: pipeline_id_123
+      name: 'weekly (MON): 07:00 AM - [job_name]'
+      depends_on: [‘precheck']
+      # use the following property to set a schedule for your pipeline. if doing so, you must also define the schedule as shown below
+      schedules: ['schedule-weekly-mon-07-00-am']
+      notifications: ['notification-10']
+</pre>
+
+We can also configure the job to retry N amount of times. This can be useful in cases where let’s say you have a window from 5am to 7am, you expect the source data to be available. You might set the configuration of the job so it starts at 5am and continues to retry upon failure.
+
+<pre>
+# spark.pie.restart.on.failure: 'true',
+# spark.pie.max.num.restarts.on.failure: '4',
+# spark.pie.backoff.duration.on.failure.ms: '300000',
+# spark.pie.job.duration.reset.restart.counter.ms: '900000',
+</pre>
