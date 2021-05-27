@@ -44,7 +44,30 @@ Next we want to incorporate our logic and test case in a function. We want this 
 
 <pre>if __name__ == "__main__”:</pre>
 
-Our test case might look something like the below:
+Another way of doing something similar to the above is using a “runner.py” file and the below package to use subparsers so you can call Python functions from any file on the server using bash commands assuming you import the file you are parsing for the functions into the “runner.py” file.
+
+<pre>
+import os
+import argparse
+
+import file_with_functions as fl
+
+if __name__ =='__main__':
+	parser = argparse.ArgumentParser()
+	subparsers = parser.add_subparsers()
+
+	subparsers.add_parser(‘main_func').set_defaults(func=fl.main_func)
+
+	args = parser.parse_args()
+
+	if 'func' in args:
+		args.func()
+	else:
+		print("No argument is given...")
+		parser.print_help()
+</pre>
+
+What does our testing job for data availability look like? Our test case might look something like the below:
 
 <pre>
 def main(spark, in_dt):
