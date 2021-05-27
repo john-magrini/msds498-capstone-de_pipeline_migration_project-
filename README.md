@@ -99,3 +99,37 @@ We can also configure the job to retry N amount of times. This can be useful in 
 # spark.pie.backoff.duration.on.failure.ms: '300000',
 # spark.pie.job.duration.reset.restart.counter.ms: '900000',
 </pre>
+
+The next Spark job in the pipeline is going to be the main ETL job. Similarily to the first job we will import the packages required for our job. The biggest change will be within the main() function. We start by reading in a metadata reference table that is used in multiple joins later on. Because this table is referenced 10+ times in joins later in the code, it would be beneficial to cache the table in memory and broadcast the data to each worker node. In PySpark, you can use Spark SQL and the syntax would be like the below:
+
+<pre>
+spark.sql("cache table metadata_pl_df")
+</pre>
+
+This actually runs a collect() function to materialize the data frame. Using the Spark API you would do .cache() or .persist() and then perform an action on that data frame like .count().
+
+The entire function is wrapped in a try/except function. This way, upon failure you can print log messages, and send custom email notifications and stop the spark session.
+
+<pre>
+except Exception as exception:
+        send_failure_mail(‘email1', ‘email1', pipeline_id, pipeline_run_id, job_name, job_run_id, exception)
+        print("spark_session_stop")
+        spark.stop()  
+        raise RuntimeError(exception)
+</pre>
+
+Because this job is designed to run periodically on a daily basis, date parameters are used throughout. Data for 8 different dates are required for each run. Because not the entire data set is required every run, we can incrementally add partitions in HDFS. Incremental, in this case still means overwriting those 8 days however. We can signficantly reduce the size of our data set by filtering for those dates and removing unnecessary records. A working table or staging table is generated with only those data required for the run. This type of staging table may be materialized if other jobs could use it as well. For this particular job, I am not materializing the staging table.
+
+A key concept to remember in data engineering and especially when working with Spark is narrow vs wide operations. Narrow operations are operations like filtering. Operations that reduce the size of the data set. Wide operations are operations that require shuffling the data set because of aggregations for example. Counts, sum, repartition() etc… Narrow operations should always come before wide operations. Because we’ve significantly reduced the size of the underlying data set and read from a number of partitions in HDFS, we now may have an unbalanced data set or skewed data set. Because we filtered that initial data set, we may have taken 80% of the files in one partition and 20% of the files in another. This creates problems when we try to run those wide operations on this data set later on.
+
+In order to redistribute your data equally across all partitions you would use an operation like repartition(). Coalesce() is similar although it doesn’t actually shuffle data around. The entire size of the data set is roughly 24GB and the default partition size in HDFS is 128MB so we can use repartition(200) to get the right balance to start and increase as needed for performance. Because this staging table is referenced 3 more times, we also want to cache this in memory if possible. Knowing the size of your data is critical when engineering your job as it clearly impacts key decisions in the process.
+
+We’re using an interseting data set where you can see the movement of an element at various nodes over time. I realize thats cryptic but the takeaway here is that we now are required to perform unique counts on multiple dimensions with various conditions. This is extremely computallionally intensive. 
+
+The data set we are working with is also designed to be a cubed data set where the measures are computed along every dimension. The values being measured are not summable. This requires repeating these unique counts over and over. In the traditional database, we were using a stored procedure to do this and it was able to run doing the counts on every different combination. Because the conditions and filters are applicable at multiple levels of detail, the plan is to instead of repeating the counts for every combination, only compute the counts for each condition and then aggregate it later using MAX or SUM, which is a much cheaper operation. 
+
+As an example of the 3 levels of details to compute these measures over, we have Country, Global, and Rest of World. We generate the counts needed at these 3 levels of detail. We then have 15+ different measures to calculate based on those counts. Because of the repetition, we also want to cache this data frame. 
+
+Side note - persist() will default to using in memory storage and then will spill over to disk if it has to so keep that in mind when configuring your spark job’s properties
+
+
