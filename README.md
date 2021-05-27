@@ -67,7 +67,7 @@ if __name__ =='__main__':
 		parser.print_help()
 </pre>
 
-What does our testing job for data availability look like? Our test case might look something like the below:
+This really demonstrates the flexibility and how adaptable Python is to Data Engineering needs and requirements. So, what does our testing job for data availability look like? Our test case might look something like the below:
 
 <pre>
 def main(spark, in_dt):
