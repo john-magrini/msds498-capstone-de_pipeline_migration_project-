@@ -142,6 +142,11 @@ spark.sql("cache table metadata_pl_df")
 
 This actually runs a collect() function to materialize the data frame. Using the Spark API you would do .cache() or .persist() and then perform an action on that data frame like .count().
 
+This actually runs a collect() function to materialize the data frame. Using the Spark API you would do .cache() or .persist() and then perform an action on that data frame like .count().
+
+<img width="1656" alt="image" src="https://user-images.githubusercontent.com/20331335/120056714-ee8ad980-bff2-11eb-810a-608f5129313a.png">
+This image shows what the Spark UI looks like for this particular Spark job. You can see the In-Memory Table Scans and the Broadcast Exchanges.
+
 The entire function is wrapped in a try/except function. This way, upon failure you can print log messages, and send custom email notifications and stop the spark session.
 
 <pre>
@@ -180,6 +185,8 @@ Repartition the final data set and write back to a new location in HDFS. Once yo
             select current_timestamp as RunLogTs, 'job_pl', USER as UserId, SESSION as SessionId, 'Completed' as FinalJobStatus, current_timestamp as ActualEndTime;
             ''')
         print('Logging Info *** DI logging ended for ', start_date)
+	
+<img width="1176" alt="image" src="https://user-images.githubusercontent.com/20331335/120056622-4d038800-bff2-11eb-98d9-5933924196cd.png">
 
 # Using DevOps
 
@@ -187,4 +194,7 @@ The platform used to automate the spark jobs is a true CI/CD system. CI, continu
 
 While working on your code, you save your changes locally and then after doing a “git pull origin main” to stay up to date, simply run [git add.; git commit -m “commit message”; git push origin dev-branch]. This commits your changes and pushes the changes to your dev branch in GitHub. 
 
+<img width="295" alt="image" src="https://user-images.githubusercontent.com/20331335/120056565-f8600d00-bff1-11eb-8ef3-a9447e5e43df.png">
+
 What is amazing about this system is that we now have 0 deployment time. We are working with a true CD system which is really nice for faster development, reliability, and performance. When changes are made to our jobs, there is no 10-15 minute wait time for the job to re-deploy to the demo environment.
+
