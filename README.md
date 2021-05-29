@@ -5,7 +5,7 @@ There are certainly pros and reasons for using an RDBMS but the requirements for
 
 The other framework involves a slightly more sophisticated pipeline that utilizes Apache's Airflow for scheduling ETL jobs but still against an RDBMS. The jobs however, do now have continuous integration made possible with GitHub. Code changes have to be tested in a dev branch and then merged to the master branch which does not require approval. This at least keeps all the code in a central repository with version control. There is no deployment time as well which is a definite benefit here but at the cost of not having a 'demo' or 'dev' environment. The testing would be conducted locally. Airflow relies on what are called DAG files that contain all the properties and directions for the job but ultimately is a fairly simple python wrapper. 
 
-### Now that we've discussed what the existing landscape looks like, let's talk a bit about what the future holds.
+## Now that we've discussed what the existing landscape looks like, let's talk a bit about what the future holds.
 Data will be stored in HDFS in parquet format. These data will be processed by Spark for ETL jobs, ML jobs, and more. For this project, we are going to be focusing on ETL jobs. The Spark job's output is then written back to HDFS and then registered in the Hive Metastore. 
 
 What is the Hive Metastore? 
@@ -19,7 +19,7 @@ The Hive Metastore is a metadata repository that contains a catalog of tables, s
 
 Trino can then be used to query the data in HMS. BI tools like Tableau have data connectors that allow users to connect to various data sources to use in their analaysis. Tableau has a Presto connector which can be used with Trino. The system that runs the Spark jobs is a CI/CD (Continuous Deployment) system with multiple environments that is powered by Kuberenetes. This system uses GitHub, PySpark application, .yml files and a python virtual environment. The metadata for each job is stored in a JSON file, properties for spark jobs and pipelines stored in .rml files, jobs run by starting up PySpark applications (also supports Scala), and CI/CD managed through GitHub integration and Actions. Given the volume of data and the computations used in generating the final data sets being able to store data either in memory or disk as Spark data frames and being able to scale up resources using Spark configuration properties and utilizing join capabilities like broadcasting were really big wins resulting in equivalent and in some cases better performance than the prior frameworks. The telemetry results were better than the other frameworks on top of the infrastrusture and the role of DevOps in the new tech stack.
 
-### Walkthrough
+# Walkthrough
 
 All the frameworks did employ various levels of DevOps behaviors such as using Python’s try/except functions and logging and monitoring. Data availability is critical for most ETL jobs as there is some reliance on upstream data sets. In order to reduce the lag of data freshness, a push system would be ideal where the next job automatically starts when the data becomes available. This is somewhat of a hybrid push pull system. A task or job is created as a dependancy and this job is tasked with checking the data availability of the upstream data sources. If the test passes and the data is available, then the Spark job continues on to the next stage or job. 
 
@@ -166,5 +166,25 @@ As an example of the 3 levels of details to compute these measures over, we have
 
 Side note - persist() will default to using in memory storage and then will spill over to disk if it has to so keep that in mind when configuring your spark job’s properties
 
+## The final output table is structured as a presentation layer aggregate. What does that mean?
+That means the data set is designed in such a way that the application using the data set can perform optimally. The data set is designed specifically for that application in a different layer than the raw data sources so other applications won’t impact performance. What that looks like in this case is there are dimensional values or cubed sets with pre-computed measures in each row. Think of it as a narrow data set and not a wide one. A wide data set might have each measure be a separate column for example.
 
+Because of the PL structure, the Spark job has to union all 35 measures to be exact. Each measure is its own data frame. Unions however, are narrow operations and does not require a data shuffling to take place so it would have minimal impact on the job’s performance. 
 
+## Final Steps
+
+Repartition the final data set and write back to a new location in HDFS. Once you have written your data to HDFS, you can then register that path in the Hive Metastore catalog. Each time the job runs you are adding a new partition. That means you have to update the metadata catalog after you add a new partition in HDFS. You can run the command RECOVER PARTITIONS to accomplish this and the new partition will materialize in the HMS table. Once the HMS table has been refreshed; that step is complete and the next step is to send a signal to another database with a few stats about the run and a completion timestamp. This step is required because another application is running in a separate database that is dependent on the completion of this run. This platform is designed in such a way that you can use PySpark to read from a number of different disparate data sources.
+
+        td.execute('''
+            insert into database_one.JobRunEventLog (RunLogTs, JobName, UserId, SessionId, FinalJobStatus, ActualEndTime)
+            select current_timestamp as RunLogTs, 'job_pl', USER as UserId, SESSION as SessionId, 'Completed' as FinalJobStatus, current_timestamp as ActualEndTime;
+            ''')
+        print('Logging Info *** DI logging ended for ', start_date)
+
+# Using DevOps
+
+The platform used to automate the spark jobs is a true CI/CD system. CI, continuous integration, is a core component of the platform. GitHub integration allows for version control and for being that centralized repositorry to store code. All code is developed and tested on dev-branches and then merged with the main branch when migrating to production. 
+
+While working on your code, you save your changes locally and then after doing a “git pull origin main” to stay up to date, simply run [git add.; git commit -m “commit message”; git push origin dev-branch]. This commits your changes and pushes the changes to your dev branch in GitHub. 
+
+What is amazing about this system is that we now have 0 deployment time. We are working with a true CD system which is really nice for faster development, reliability, and performance. When changes are made to our jobs, there is no 10-15 minute wait time for the job to re-deploy to the demo environment.
