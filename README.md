@@ -196,5 +196,22 @@ While working on your code, you save your changes locally and then after doing a
 
 <img width="295" alt="image" src="https://user-images.githubusercontent.com/20331335/120056565-f8600d00-bff1-11eb-8ef3-a9447e5e43df.png">
 
+In order to merge with the main branch a Pull Request is required. This is the only approval part of this process.
+<img width="1487" alt="image" src="https://user-images.githubusercontent.com/20331335/120056808-7244c600-bff3-11eb-9b53-2f36c88665c6.png">
+This is a valuable and necessary step. Peer reviews are extremely valuable and this mitigates the risk of pushing bugs to production.
+
 What is amazing about this system is that we now have 0 deployment time. We are working with a true CD system which is really nice for faster development, reliability, and performance. When changes are made to our jobs, there is no 10-15 minute wait time for the job to re-deploy to the demo environment.
 
+What the deployment process looked like
+
+<img width="468" alt="image" src="https://user-images.githubusercontent.com/20331335/120056859-ba63e880-bff3-11eb-8ab9-7bbac1e00976.png">
+
+Now this is only done once and each job is de-coupled from all other jobs so the parameters and configuartions are all job agnostic.
+
+# Conclusion
+
+<img width="1217" alt="image (19)" src="https://user-images.githubusercontent.com/20331335/120032143-97631580-bfae-11eb-8cde-cebc4fa06e14.png">
+
+Using new technologies, a DevOps culture, and Data Engineering excellence, a critical data pipeline consisting of over 25GB of data being stored in memory every run has been migrated off of a traditional RDBMS saving costs and resources. The jobs have been running in production since November 2020 and we've seen more reliable and performant runs. Both human and computational resouces saved. The strategy to scale this process has already been discussed and development work is already underway for more pipelines to be onboarded to this process!
+
+## John Magrini, Master of Science in Data Science Northwestern Univirsity.
